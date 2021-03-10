@@ -80,9 +80,9 @@ ${DIST}/col-head.txt :
 
 .INTERMEDIATE: ${COLUMNS}
 ${DIST}/column.%.txt :
-	cat ${DIST}/$(shell date +%Y%m%d)-*.ping_report.txt	\
-	| awk -v RS= '/\.$* ping/'				\
-	| awk '/^rtt/'						\
-	| awk '{print $$4}'					\
-	| awk -F/ '{print $$2}'					\
+	cat ${DIST}/${DATE}-*.ping_report.txt	\
+	| awk -v RS= '/\.$* ping/'		\
+	| awk '/^rtt/'				\
+	| awk '{print $$4}'			\
+	| awk -F/ '{print $$2}'			\
 	> $@
