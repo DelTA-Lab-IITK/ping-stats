@@ -6,8 +6,11 @@ DIST	:= dist
 # num_pings
 N	:= 64
 
-SERVERS := $(shell seq 45 53)
-hostname = 172.27.21.1$1
+ip = ip a | grep -o '172\.27\.21\....'
+IP := $(shell $(ip))
+SKIP := $(shell $(ip) | awk -F. '{print $$4}')
+SERVERS := $(shell seq 145 154 | sed '/${SKIP}/d')
+hostname = 172.27.21.$1
 
 ## Create Reports
 ## ====================================================
@@ -35,7 +38,11 @@ ${DIST} :
 ## ====================================================
 
 DATE	:= $(shell date +%Y%m%d)
-COLUMNS := ${SERVERS:%=${DIST}/column.1%.txt}
+COLUMNS := ${SERVERS:%=${DIST}/column.%.txt}
+
+COLOR_NAMES := dark-red,dark-green,dark-blue,dark-magenta,
+COLOR_NAMES += dark-pink,dark-violet,orange-red,brown,
+COLOR_NAMES += dark-goldenrod,sea-green
 
 awk_frac_hr =			\
 { h = substr($$1,1,2);		\
@@ -43,27 +50,43 @@ awk_frac_hr =			\
   printf("%7.4f\n",h+m/60)	\
 }
 
-gnuplot_script =		\
-set term "png" size 1280,720 ;	\
-set output "$1" ;		\
-set grid ;			\
-set logscale y ;		\
-plot				\
-  "$2" u 1:2 w l t "145",	\
-  "$2" u 1:3 w l t "146", 	\
-  "$2" u 1:4 w l t "147", 	\
-  "$2" u 1:5 w l t "148", 	\
-  "$2" u 1:6 w l t "149", 	\
-  "$2" u 1:7 w l t "150", 	\
-  "$2" u 1:8 w l t "151", 	\
-  "$2" u 1:9 w l t "152", 	\
-  "$2" u 1:10 w l t "153" lc rgb "gold" ;
+colors =						\
+echo $(COLOR_NAMES)					\
+| tr -d ' ' | tr ',' '\n' | awk '{print NR,$$1}'
 
+servernames =						\
+echo ${SERVERS} | tr ' ' '\n' | awk '{print NR,$$1}'
+
+plot_meta = join					\
+  <($(servernames))					\
+  <($(colors))						\
+| awk '{print "$1",$$2,$$3}'
+
+plot_fmt = \"%s\" u 1:%d w l t \"%s\" lc rgb \"%s\", \n
+
+plot_cmd = plot $(shell					\
+$(call plot_meta,$1)					\
+| awk '{printf ("$(plot_fmt)",$$1,1+NR,$$2,$$3)}'	\
+) ;
+
+gnuplot_script =				\
+set term "png" size 1280,720 			\
+    font "Linux Libertine" ;			\
+set output "$1" ;				\
+set grid ;					\
+set logscale y ;				\
+set title "Ping statistics for $3"		\
+    font ",16";					\
+set xlabel "Time (in hours of the day)"		\
+    offset 0,0.5 ;				\
+set ylabel "Network Latency (in ms)"		\
+    offset 2,0 ;				\
+$(call plot_cmd,$2)
 
 plot: ${DIST}/${DATE}-summary.png
 
 ${DIST}/${DATE}-summary.png : ${DIST}/plot-data.txt
-	gnuplot -p -e '$(call gnuplot_script,$@,$<)'
+	gnuplot -p -e '$(call gnuplot_script,$@,$<,${IP})'
 
 .INTERMEDIATE: ${DIST}/plot-data.txt
 ${DIST}/plot-data.txt : ${DIST}/col-head.txt ${COLUMNS}
