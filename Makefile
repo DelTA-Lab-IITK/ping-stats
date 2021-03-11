@@ -109,3 +109,37 @@ ${DIST}/column.%.txt :
 	| awk '{print $$4}'			\
 	| awk -F/ '{print $$2}'			\
 	> $@
+
+## Update Self
+## ====================================================
+
+## WARNING:
+## --------------------------------
+## Update this repository. This may require to
+## enable/bypass/login-to proxy server in order to
+## establish connection to the git repository.
+
+self-update :
+	git pull
+
+## Log archive
+## ====================================================
+
+YYYY	:= $(shell echo ${DATE} | cut -c -4)
+MM	:= $(shell echo ${DATE} | cut -c 5-6)
+DD	:= $(shell echo ${DATE} | cut -c 7-)
+
+daily-archive : ${DIST}/${YYYY}/${MM}/${DD}.tar.bz2
+${DIST}/${YYYY}/${MM}/${DD}.tar.bz2 : ${DIST}/${YYYY}/${MM}
+	tar cjf $@ dist/${DATE}-*.ping_report.txt
+	rm dist/${DATE}-*.ping_report.txt
+
+monthly-archive : ${DIST}/${YYYY}/${MM}.tar.bz2
+${DIST}/${YYYY}/${MM}.tar.bz2 : ${DIST}/${YYYY}
+	tar cjf $@ ${DIST}/${YYYY}/${MM}/*.tar.bz2
+	rm ${DIST}/${YYYY}/${MM}/*.tar.bz2
+	mv -t ${DIST}/${YYYY}/${MM} \
+	  ${DIST}/${YYYY}${MM}*-summary.png
+
+${DIST}/${YYYY} ${DIST}/${YYYY}/${MM} :
+	mkdir -p $@
